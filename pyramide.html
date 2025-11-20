@@ -2,138 +2,224 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Rotating Pyramid Tray – 3D Preview</title>
+  <title>Rotating Pyramid Tray – Simple 3D Preview</title>
   <style>
     body {
       margin: 0;
-      overflow: hidden;
       background: #202020;
       color: #eee;
       font-family: Arial, sans-serif;
+      overflow: hidden;
     }
     #info {
       position: absolute;
       top: 10px;
       left: 10px;
       padding: 6px 10px;
-      background: rgba(0, 0, 0, 0.6);
+      background: rgba(0, 0, 0, 0.7);
       border-radius: 4px;
       font-size: 13px;
       z-index: 10;
+    }
+    #viewport {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 900px;
+    }
+    #scene {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      transform-style: preserve-3d;
+      transform: rotateX(-30deg) rotateY(35deg);
+      transition: transform 0.05s linear;
+    }
+    .tray {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform-style: preserve-3d;
+      box-sizing: border-box;
+      border-radius: 4px;
+      box-shadow: 0 2px 3px rgba(0,0,0,0.5);
+    }
+    .tray-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #c49a6c, #8b5a2b);
+      border-radius: 4px;
+    }
+    /* A little highlight edge */
+    .tray::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 4px;
+      border: 1px solid rgba(255,255,255,0.3);
+      mix-blend-mode: screen;
+      pointer-events: none;
+    }
+    .tray-base {
+      background: linear-gradient(135deg, #7b4a2b, #4b2a18);
+    }
+
+    /* Dowel */
+    #dowel {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 14px;
+      height: 220px;
+      transform: translate3d(-50%, -50%, 0);
+      transform-style: preserve-3d;
+    }
+    .dowel-face {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: #dddddd;
+      border-radius: 7px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
   </style>
 </head>
 <body>
   <div id="info">
-    Rotating Pyramid Tray (preview only)<br />
-    Left drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right drag: pan
+    Rotating Pyramid Tray (simple 3D preview)<br/>
+    Left drag: rotate &nbsp;|&nbsp; Scroll: zoom (browser zoom)
+  </div>
+  <div id="viewport">
+    <div id="scene">
+      <!-- Dowel -->
+      <div id="dowel">
+        <div class="dowel-face"></div>
+      </div>
+
+      <!-- Trays (sizes scaled mm → px: size_px = mm * 1.2) -->
+      <!-- Base -->
+      <div class="tray tray-base" style="
+        width: 240px; height: 240px;
+        transform: translate3d(-50%, 120px, -50px) rotateX(90deg);
+      ">
+        <div class="tray-face"></div>
+      </div>
+
+      <!-- Tray 1 (200 mm) -->
+      <div class="tray" style="
+        width: 240px; height: 240px;
+        transform: translate3d(-50%, 95px, -50px) rotateX(90deg) rotateZ(0deg);
+      ">
+        <div class="tray-face"></div>
+      </div>
+
+      <!-- Tray 2 (180 mm) -->
+      <div class="tray" style="
+        width: 216px; height: 216px;
+        transform: translate3d(-50%, 70px, -50px) rotateX(90deg) rotateZ(45deg);
+      ">
+        <div class="tray-face"></div>
+      </div>
+
+      <!-- Tray 3 (160 mm) -->
+      <div class="tray" style="
+        width: 192px; height: 192px;
+        transform: translate3d(-50%, 45px, -50px) rotateX(90deg) rotateZ(90deg);
+      ">
+        <div class="tray-face"></div>
+      </div>
+
+      <!-- Tray 4 (140 mm) -->
+      <div class="tray" style="
+        width: 168px; height: 168px;
+        transform: translate3d(-50%, 20px, -50px) rotateX(90deg) rotateZ(135deg);
+      ">
+        <div class="tray-face"></div>
+      </div>
+
+      <!-- Tray 5 (120 mm) -->
+      <div class="tray" style="
+        width: 144px; height: 144px;
+        transform: translate3d(-50%, -5px, -50px) rotateX(90deg) rotateZ(180deg);
+      ">
+        <div class="tray-face"></div>
+      </div>
+
+      <!-- Top cap (60 mm) -->
+      <div class="tray" style="
+        width: 72px; height: 72px;
+        transform: translate3d(-50%, -30px, -50px) rotateX(90deg);
+      ">
+        <div class="tray-face"></div>
+      </div>
+    </div>
   </div>
 
-  <!-- Three.js + OrbitControls from same version (0.132.2) -->
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
-
   <script>
-    // ----- Basic scene -----
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x202020);
+    // Simple mouse rotation for the whole scene
+    const scene = document.getElementById('scene');
+    let isDragging = false;
+    let lastX = 0;
+    let lastY = 0;
+    let rotX = -30;
+    let rotY = 35;
 
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      2000
-    );
-    camera.position.set(200, 200, 260);
+    function updateRotation() {
+      scene.style.transform =
+        `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+    }
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 80, 0);
-    controls.update();
-
-    // ----- Lights -----
-    const hemi = new THREE.HemisphereLight(0xffffff, 0x404040, 0.8);
-    scene.add(hemi);
-
-    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
-    dir.position.set(200, 300, 100);
-    scene.add(dir);
-
-    // ----- Grid -----
-    const grid = new THREE.GridHelper(400, 20, 0x666666, 0x333333);
-    grid.position.y = 0;
-    scene.add(grid);
-
-    // ----- Dimensions (mm, scaled) -----
-    // 1 unit = 0.5 mm, just for display scale.
-    const scale = 0.5;
-
-    const traySizes = [200, 180, 160, 140, 120];   // mm squares
-    const trayThickness = 20;                      // mm
-    const spacer = 10;                             // mm
-    const baseSize = 200;                          // mm
-    const baseThickness = 35;                      // mm
-    const topCapSize = 60;                         // mm
-    const topCapThickness = 20;                    // mm
-
-    // ----- Materials -----
-    const baseMat  = new THREE.MeshPhongMaterial({ color: 0x5a3d2b });
-    const trayMat  = new THREE.MeshPhongMaterial({ color: 0x8b5a2b });
-    const topMat   = new THREE.MeshPhongMaterial({ color: 0xb8860b });
-    const dowelMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
-
-    // ----- Base -----
-    const baseGeom = new THREE.BoxGeometry(
-      baseSize * scale,
-      baseThickness * scale,
-      baseSize * scale
-    );
-    const baseMesh = new THREE.Mesh(baseGeom, baseMat);
-    baseMesh.position.y = (baseThickness * scale) / 2;
-    scene.add(baseMesh);
-
-    // ----- Trays -----
-    let currentHeight = baseThickness; // mm above floor
-    const rotationStepDeg = 45;
-    const rotationStepRad = Math.PI / 180 * rotationStepDeg;
-
-    traySizes.forEach((size, index) => {
-      const geom = new THREE.BoxGeometry(
-        size * scale,
-        trayThickness * scale,
-        size * scale
-      );
-      const mesh = new THREE.Mesh(geom, trayMat);
-
-      currentHeight += spacer + trayThickness / 2;
-      mesh.position.y = currentHeight * scale;
-
-      mesh.rotation.y = rotationStepRad * index;
-
-      scene.add(mesh);
-      currentHeight += trayThickness / 2;
+    document.addEventListener('mousedown', e => {
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
     });
 
-    // ----- Top cap -----
-    currentHeight += spacer;
-    const topGeom = new THREE.BoxGeometry(
-      topCapSize * scale,
-      topCapThickness * scale,
-      topCapSize * scale
-    );
-    const topMesh = new THREE.Mesh(topGeom, topMat);
-    topMesh.position.y = (currentHeight + topCapThickness / 2) * scale;
-    scene.add(topMesh);
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
 
-    // ----- Dowel -----
-    const totalHeightMm =
-      baseThickness +
-      spacer +
-      traySizes.length * (trayThickness + spacer) +
-      topCapThickness;
+    document.addEventListener('mousemove', e => {
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      rotY += dx * 0.4;
+      rotX -= dy * 0.4;
+      if (rotX > 80) rotX = 80;
+      if (rotX < -80) rotX = -80;
+      updateRotation();
+    });
 
-    const dowelRadiusMm = 6; // 12 mm dowel radius
-    const dowelGeom = new T
+    // Touch support (optional)
+    document.addEventListener('touchstart', e => {
+      if (e.touches.length !== 1) return;
+      isDragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    });
+
+    document.addEventListener('touchend', () => {
+      isDragging = false;
+    });
+
+    document.addEventListener('touchmove', e => {
+      if (!isDragging || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      const dx = touch.clientX - lastX;
+      const dy = touch.clientY - lastY;
+      lastX = touch.clientX;
+      lastY = touch.clientY;
+      rotY += dx * 0.4;
+      rotX -= dy * 0.4;
+      if (rotX > 80) rotX = 80;
+      if (rotX < -80) rotX = -80;
+      updateRotation();
+    });
+  </script>
+</body>
+</html>

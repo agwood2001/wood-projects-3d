@@ -16,7 +16,7 @@
       top: 10px;
       left: 10px;
       padding: 6px 10px;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.6);
       border-radius: 4px;
       font-size: 13px;
       z-index: 10;
@@ -29,13 +29,12 @@
     Left drag: rotate &nbsp;|&nbsp; Scroll: zoom &nbsp;|&nbsp; Right drag: pan
   </div>
 
-  <!-- Three.js core -->
-  <script src="https://unpkg.com/three/build/three.min.js"></script>
-  <!-- Orbit controls for mouse navigation -->
-  <script src="https://unpkg.com/three/examples/js/controls/OrbitControls.js"></script>
+  <!-- Three.js + OrbitControls from same version (0.132.2) -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
 
   <script>
-    // ----- Basic scene setup -----
+    // ----- Basic scene -----
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x202020);
 
@@ -43,50 +42,50 @@
       45,
       window.innerWidth / window.innerHeight,
       0.1,
-      1000
+      2000
     );
-    camera.position.set(160, 160, 220);
+    camera.position.set(200, 200, 260);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 60, 0);
+    controls.target.set(0, 80, 0);
     controls.update();
 
     // ----- Lights -----
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x404040, 0.7);
-    scene.add(hemiLight);
+    const hemi = new THREE.HemisphereLight(0xffffff, 0x404040, 0.8);
+    scene.add(hemi);
 
-    const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
-    dirLight.position.set(100, 200, 100);
-    scene.add(dirLight);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.9);
+    dir.position.set(200, 300, 100);
+    scene.add(dir);
 
-    // ----- Helpers (ground grid) -----
-    const grid = new THREE.GridHelper(400, 20, 0x555555, 0x333333);
+    // ----- Grid -----
+    const grid = new THREE.GridHelper(400, 20, 0x666666, 0x333333);
     grid.position.y = 0;
     scene.add(grid);
 
-    // ----- Dimensions (in mm -> scaled) -----
-    // We'll use 1 unit = 1 mm / 2 to keep things compact.
+    // ----- Dimensions (mm, scaled) -----
+    // 1 unit = 0.5 mm, just for display scale.
     const scale = 0.5;
 
-    const traySizes = [200, 180, 160, 140, 120]; // mm (square)
-    const trayThickness = 20; // mm
-    const spacer = 10;        // mm
-    const baseSize = 200;     // mm
-    const baseThickness = 35; // mm
-    const topCapSize = 60;    // mm
-    const topCapThickness = 20; // mm
+    const traySizes = [200, 180, 160, 140, 120];   // mm squares
+    const trayThickness = 20;                      // mm
+    const spacer = 10;                             // mm
+    const baseSize = 200;                          // mm
+    const baseThickness = 35;                      // mm
+    const topCapSize = 60;                         // mm
+    const topCapThickness = 20;                    // mm
 
     // ----- Materials -----
-    const baseMat = new THREE.MeshPhongMaterial({ color: 0x5a3d2b });
-    const trayMat = new THREE.MeshPhongMaterial({ color: 0x8b5a2b });
-    const topMat  = new THREE.MeshPhongMaterial({ color: 0xb8860b });
+    const baseMat  = new THREE.MeshPhongMaterial({ color: 0x5a3d2b });
+    const trayMat  = new THREE.MeshPhongMaterial({ color: 0x8b5a2b });
+    const topMat   = new THREE.MeshPhongMaterial({ color: 0xb8860b });
     const dowelMat = new THREE.MeshPhongMaterial({ color: 0xdddddd });
 
-    // ----- Base block -----
+    // ----- Base -----
     const baseGeom = new THREE.BoxGeometry(
       baseSize * scale,
       baseThickness * scale,
@@ -97,12 +96,9 @@
     scene.add(baseMesh);
 
     // ----- Trays -----
-    const trayMeshes = [];
-    let currentHeight = baseThickness; // start above base in mm
-
-    // 45° per tray from your spec
+    let currentHeight = baseThickness; // mm above floor
     const rotationStepDeg = 45;
-    const rotationStepRad = (Math.PI / 180) * rotationStepDeg;
+    const rotationStepRad = Math.PI / 180 * rotationStepDeg;
 
     traySizes.forEach((size, index) => {
       const geom = new THREE.BoxGeometry(
@@ -112,17 +108,12 @@
       );
       const mesh = new THREE.Mesh(geom, trayMat);
 
-      // Height position (centre of box)
       currentHeight += spacer + trayThickness / 2;
       mesh.position.y = currentHeight * scale;
 
-      // Rotation relative to base
       mesh.rotation.y = rotationStepRad * index;
 
-      trayMeshes.push(mesh);
       scene.add(mesh);
-
-      // Prepare for the next tray
       currentHeight += trayThickness / 2;
     });
 
@@ -137,38 +128,12 @@
     topMesh.position.y = (currentHeight + topCapThickness / 2) * scale;
     scene.add(topMesh);
 
-    // ----- Dowel (visual only) -----
+    // ----- Dowel -----
     const totalHeightMm =
       baseThickness +
       spacer +
       traySizes.length * (trayThickness + spacer) +
       topCapThickness;
 
-    const dowelRadiusMm = 6; // 12 mm dowel => 6 mm radius
-    const dowelGeom = new THREE.CylinderGeometry(
-      dowelRadiusMm * scale,
-      dowelRadiusMm * scale,
-      totalHeightMm * scale,
-      32
-    );
-    const dowelMesh = new THREE.Mesh(dowelGeom, dowelMat);
-    dowelMesh.position.y = (totalHeightMm * scale) / 2;
-    scene.add(dowelMesh);
-
-    // ----- Animation loop -----
-    function animate() {
-      requestAnimationFrame(animate);
-      renderer.render(scene, camera);
-    }
-
-    animate();
-
-    // ----- Resize handling -----
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  </script>
-</body>
-</html>
+    const dowelRadiusMm = 6; // 12 mm dowel radius
+    const dowelGeom = new T
